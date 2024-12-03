@@ -1,0 +1,42 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "hatch-sphinx"
+dynamic = ["version"]
+description = 'A plugin for Hatch for building documentation with Sphinx'
+readme = "README.md"
+requires-python = ">=3.9"
+license = "MIT"
+keywords = []
+authors = [
+  { name = "Stuart Prescott", email = "stuart@debian.org" },
+]
+classifiers = [
+  "Framework :: Hatch",
+  "Development Status :: 4 - Beta",
+  "Programming Language :: Python",
+  "Programming Language :: Python :: 3.9",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
+  "Programming Language :: Python :: Implementation :: CPython",
+  "Programming Language :: Python :: Implementation :: PyPy",
+]
+dependencies = [
+  "hatchling",
+  "sphinx",
+]
+
+[project.urls]
+Documentation = "https://github.com/llimeht/hatch-sphinx#readme"
+Issues = "https://github.com/llimeht/hatch-sphinx/issues"
+Source = "https://github.com/llimeht/hatch-sphinx"
+
+[tool.hatch.version]
+path = "hatch_sphinx/__init__.py"
+
+[project.entry-points.hatch]
+sphinx = "hatch_sphinx.hooks"
