@@ -132,6 +132,8 @@ class SphinxBuildHook(BuildHookInterface[BuilderConfig]):
 
     def _run_apidoc(self, doc_path: Path, out_path: Path, tool: ToolConfig) -> bool:
         """run sphinx-apidoc"""
+        tool.source = tool.source.rstrip("/")
+
         args: list[str | None] = [
             *(
                 tool.tool_apidoc
@@ -148,6 +150,7 @@ class SphinxBuildHook(BuildHookInterface[BuilderConfig]):
             tool.header,
             *(shlex.split(tool.sphinx_opts) if tool.sphinx_opts else []),
             tool.source,
+            *(tool.source + os.sep + e for e in tool.exclude),
         ]
         cleaned_args = list(filter(None, args))
 
@@ -271,6 +274,9 @@ class ToolConfig(BuilderConfig):
 
     source: str = "."
     """Source to be included in the API docs"""
+
+    exclude: list[str] = field(default_factory=list)
+    """Patterns of filepaths to exclude from analysis"""
 
     # Config items for the 'commands' tool
 
