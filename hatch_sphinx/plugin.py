@@ -187,7 +187,9 @@ class SphinxBuildHook(BuildHookInterface[BuilderConfig]):
             elif isinstance(c, (list, tuple)):
                 c = [a if a != "{python}" else sys.executable for a in c]
                 if shell:
-                    self.app.display_warning(f"hatch-sphinx: converting command to single string in shell=true mode")
+                    self.app.display_warning(
+                        "hatch-sphinx: converting command to single string in shell=true mode"
+                    )
                     c = " ".join(c)
 
             self.app.display_info(f"hatch-sphinx: executing '{c}'")
