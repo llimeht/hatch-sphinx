@@ -170,18 +170,22 @@ class SphinxBuildHook(BuildHookInterface[BuilderConfig]):
     ) -> bool:
         """run a custom command"""
         for c in tool.commands:
+            shell = True if tool.shell is None else tool.shell
             if isinstance(c, str):
                 c = c.replace("{python}", sys.executable)
             elif isinstance(c, (list, tuple)):
                 c = [a if a != "{python}" else sys.executable for a in c]
+                if shell:
+                    self.app.display_warning(f"hatch-sphinx: converting command to single string in shell=true mode")
+                    c = " ".join(c)
 
             self.app.display_info(f"hatch-sphinx: executing '{c}'")
             try:
                 subprocess.run(
-                    c, check=True, cwd=doc_path, shell=True, env=self._env(tool)
+                    c, check=True, cwd=doc_path, shell=shell, env=self._env(tool)
                 )
             except (OSError, subprocess.CalledProcessError) as e:
-                self.app.display_error(f"hatch-sphinx: could not execute command: {e}")
+                self.app.display_error(f"hatch-sphinx: command failed: {e}")
                 return False
 
         return True
@@ -256,8 +260,11 @@ class ToolConfig(BuilderConfig):
 
     # Config items for the 'commands' tool
 
-    commands: list[str] = field(default_factory=list)
+    commands: list[str|list[str]] = field(default_factory=list)
     """Custom command to run within the {doc_dir}"""
+
+    shell: Optional[bool] = None
+    """Let the shell expand the command"""
 
     def auto_doc_path(self, root: Path) -> Path:
         """Determine the doc root for sphinx"""

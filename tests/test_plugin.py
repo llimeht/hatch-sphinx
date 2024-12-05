@@ -107,7 +107,22 @@ def test_tool_custom(new_project: FixtureProject, tmp_path: Path) -> None:
 [[tool.hatch.build.targets.wheel.hooks.sphinx.tools]]
 tool = "custom"
 out_dir = "output"
-commands = ["touch output/foo.html"]
+shell = true
+commands = [
+    "touch output/foo.html",
+    "touch output/1\\\\ 2.html output/a1.html output/a2.html",
+    "rm output/a*.html",
+    ["touch", "output/3\\\\ 4.html", "output/b1.html", "output/b2.html"],
+    ["rm", "output/b*.html"],
+]
+
+[[tool.hatch.build.targets.wheel.hooks.sphinx.tools]]
+tool = "custom"
+out_dir = "output"
+shell = false
+commands = [
+    ["touch", "output/1*.html"],
+]
 """
     )
 
@@ -115,8 +130,17 @@ commands = ["touch output/foo.html"]
 
     new_project.build()
 
-    # Check that the file got created in the source tree
+    # Check that the files got created in the source tree
     assert (new_project.path / "docs" / "output" / "foo.html").exists()
+
+    # Check handling of multi-arg commands with spaces (shell=True)
+    assert (new_project.path / "docs" / "output" / "1 2.html").exists()
+    assert not (new_project.path / "docs" / "output" / "a1.html").exists()
+    assert (new_project.path / "docs" / "output" / "3 4.html").exists()
+    assert not (new_project.path / "docs" / "output" / "b1.html").exists()
+
+    # And for shell=False where wildcards will not be expanded
+    assert (new_project.path / "docs" / "output" / "1*.html").exists()
 
     extract_dir = tmp_path / "extract"
     extract_dir.mkdir()

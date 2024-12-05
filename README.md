@@ -71,7 +71,8 @@ configuration keys they support are listed below
 | Key | Default | Description |
 | --- | ------- | ----------- |
 | `tool` | required | `custom` |
-| `commands` | required | List of commands to be executed; the magic string `{python}` is replaced with current interpreter (`sys.executable`). Commands are run via the shell, but that likely causes portability issues. |
+| `commands` | required | List of commands to be executed; the magic string `{python}` is replaced with current interpreter (`sys.executable`). Each command can be a string or a list of strings. |
+| `shell` | `false` | Whether to run the command via the shell (i.e. the `shell` parameter for `subprocess.run`) which permits wildcard expansion and scripting; note that the command cannot be a list of strings in `shell=true` mode. |
 
 ### Examples
 
