@@ -55,6 +55,7 @@ configuration keys they support are listed below
 | `separate` | `true` | Make a separate rst file per module (`--separate` option). |
 | `header` | `None` | Header for documentation (`-H header` option). |
 | `source` | `"."` | Source code to be included in the API docs. |
+| `tool_apidoc` | `["python", "-m", "sphinx.ext.apidoc"` | Command to run as a list of strings |
 
 ### Tool `build` options
 
@@ -65,6 +66,7 @@ configuration keys they support are listed below
 | `warnings` | `false` | Treat warnings as errors (`--warnings` option). |
 | `keep_going` | `false` | Continue after warnings rather exiting immediately (`--keep-going` option). |
 | `source` | `"."` | Source code to be included in the docs. |
+| `tool_build` | `["python", "-m", "sphinx", "build"` | Command to run as a list of strings |
 
 ### Tool `custom` options
 
@@ -104,7 +106,6 @@ out_dir = "build"
 ## To-do list
 
  - support a `make` tool for `Makefile` based invocation of Sphinx
- - support selecting which `python` interpreter is used for tools (e.g. `python -m sphinx` rather than `sphinx-build`)
  - add option to allow `commands` to exit uncleanly
 
 

@@ -97,7 +97,11 @@ class SphinxBuildHook(BuildHookInterface[BuilderConfig]):
     def _run_build(self, doc_path: Path, out_path: Path, tool: ToolConfig) -> bool:
         """run sphinx-build"""
         args: list[str | None] = [
-            "sphinx-build",
+            *(
+                tool.tool_build
+                if tool.tool_build
+                else [sys.executable, "-m", "sphinx", "build"]
+            ),
             "-W" if tool.warnings else None,
             "--keep-going" if tool.keep_going else None,
             "-b" if tool.format else None,
@@ -129,7 +133,11 @@ class SphinxBuildHook(BuildHookInterface[BuilderConfig]):
     def _run_apidoc(self, doc_path: Path, out_path: Path, tool: ToolConfig) -> bool:
         """run sphinx-apidoc"""
         args: list[str | None] = [
-            "sphinx-apidoc",
+            *(
+                tool.tool_apidoc
+                if tool.tool_apidoc
+                else [sys.executable, "-m", "sphinx.ext.apidoc"]
+            ),
             "-o",
             str(out_path.resolve()),
             "-d",
@@ -232,6 +240,9 @@ class ToolConfig(BuilderConfig):
 
     # Config items for the 'build' tool
 
+    tool_build: Optional[list[str]] = None
+    """Command to use (defaults to `python -m sphinx build`)"""
+
     format: str = "html"
     """Output format selected for 'build' tool"""
 
@@ -242,6 +253,9 @@ class ToolConfig(BuilderConfig):
     """--keep-going: With -W option, keep going after warnings"""
 
     # Config items for the 'apidoc' tool
+
+    tool_apidoc: Optional[list[str]] = None
+    """Command to use (defaults to `python -m sphinx apidoc`)"""
 
     depth: int = 3
     """Depth to recurse into the structures for API docs"""
@@ -260,7 +274,7 @@ class ToolConfig(BuilderConfig):
 
     # Config items for the 'commands' tool
 
-    commands: list[str|list[str]] = field(default_factory=list)
+    commands: list[str | list[str]] = field(default_factory=list)
     """Custom command to run within the {doc_dir}"""
 
     shell: Optional[bool] = None
