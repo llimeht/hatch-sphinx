@@ -286,7 +286,15 @@ class SphinxBuildHook(BuildHookInterface[BuilderConfig]):
         """merge in any extra environment variables specified in the config"""
         env = os.environ.copy()
         if tool.environment:
-            env.update(tool.environment)
+            for k, v in tool.environment.items():
+                if k in env:
+                    if k == "PYTHONPATH":
+                        env[k] = f"{v}:{env[k]}"
+                    else:
+                        self.app.display_warning(
+                            "hatch-sphinx: overwriting environment from configuration: "
+                            f"{k}: {v}"
+                        )
         return env
 
     def _expand_globs(self, args: list[str], root_dir: str | Path) -> list[str]:
