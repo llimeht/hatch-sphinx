@@ -73,8 +73,14 @@ configuration keys they support are listed below
 | Key | Default | Description |
 | --- | ------- | ----------- |
 | `tool` | required | `custom` |
-| `commands` | required | List of commands to be executed; the magic string `{python}` is replaced with current interpreter (`sys.executable`). Each command can be a string or a list of strings. |
-| `shell` | `false` | Whether to run the command via the shell (i.e. the `shell` parameter for `subprocess.run`) which permits wildcard expansion and scripting; note that the command cannot be a list of strings in `shell=true` mode. |
+| `commands` | required | List of commands to be executed; the magic string `{python}` is replaced with current interpreter (`sys.executable`). Each command can be a list of strings (preferred) or a single string. |
+| `shell` | `false` | Whether to run the command via the shell (i.e. the `shell` parameter for `subprocess.run`) which permits wildcard expansion and scripting; note that the command cannot be a list of strings in `shell=true` mode. The standard warnings from `subprocess.run` to avoid using the shell apply here too. |
+| `expand_globs` | `false` | Whether to expand globs in the command arguments. |
+
+Note that not all combinations of `shell=true`, `expand_globs=true` and the
+individual command being a single string are supported. The recommended
+configuration is to use `shell=false` and each command as a list, with
+`expand_globs=true` if wildcard expansion is needed.
 
 ### Examples
 
@@ -93,6 +99,17 @@ tool = "build"
 format = "html"
 source = "source"
 out_dir = "build"
+
+[[tool.hatch.build.targets.wheel.hooks.sphinx.tools]]
+tool = "custom"
+out_dir = "build"
+shell = false
+expand_globs = true
+commands = [
+  [ "ls", "-l", "*.py" ],
+  "ls -l *.py",
+  [ "{python}", "-c", "import shutil; shutil.copytree('foo', 'bar')"],
+]
 ```
 
 ## Notes

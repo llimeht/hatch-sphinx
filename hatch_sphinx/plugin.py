@@ -1,12 +1,12 @@
-"""hatch-sphinx: hatchling build plugin for Sphinx document system
-
-"""
+"""hatch-sphinx: hatchling build plugin for Sphinx document system"""
 
 from __future__ import annotations
 
 from collections.abc import Sequence
+import contextlib
 from dataclasses import MISSING, asdict, dataclass, field, fields
 import logging
+import glob
 import os
 from pathlib import Path
 import subprocess
@@ -17,6 +17,27 @@ from typing import Any, Optional
 
 from hatchling.builders.hooks.plugin.interface import BuildHookInterface
 from hatchling.builders.config import BuilderConfig
+
+
+try:
+    from contextlib import chdir
+
+except ImportError:
+    # CRUFT: contextlib.chdir added Python 3.11
+
+    class chdir(contextlib.AbstractContextManager):  # type: ignore  # pylint: disable=invalid-name
+        """Non thread-safe context manager to change the current working directory."""
+
+        def __init__(self, path: str) -> None:
+            self.path = path
+            self._old_cwd: list[str] = []
+
+        def __enter__(self) -> None:
+            self._old_cwd.append(os.getcwd())
+            os.chdir(self.path)
+
+        def __exit__(self, *excinfo: Any) -> None:
+            os.chdir(self._old_cwd.pop())
 
 
 log = logging.getLogger(__name__)
@@ -181,21 +202,79 @@ class SphinxBuildHook(BuildHookInterface[BuilderConfig]):
     ) -> bool:
         """run a custom command"""
         for c in tool.commands:
-            shell = True if tool.shell is None else tool.shell
-            if isinstance(c, str):
-                c = c.replace("{python}", sys.executable)
-            elif isinstance(c, (list, tuple)):
-                c = [a if a != "{python}" else sys.executable for a in c]
-                if shell:
-                    self.app.display_warning(
-                        "hatch-sphinx: converting command to single string in shell=true mode"
-                    )
-                    c = " ".join(c)
+
+            # Matrix of options
+            #
+            #   shell   globs   type(c)   supported
+            #
+            #   True    True     str         ✘
+            #   True    True     list        ✘
+            #   True    False    str         ✔
+            #   True    False    list        ✘
+            #
+            #   False   True     str         ✔
+            #   False   True     list        ✔
+            #   False   False    str         ✔
+            #   False   False    list        ✔
+
+            # When args is a list, args needs to be joined to make a string
+            # for the shell in shell=True mode, but this cannot be done
+            # reliably, so is unsupported
+
+            aborting = False
+            if not isinstance(c, (str, list, tuple)):
+                # shouldn't be possible but better to check than have an issue
+                self.app.display_error(
+                    f"hatch-sphinx: unknown type for command {type(c)}"
+                )
+                aborting = True
+
+            # normalise the iterable type
+            if isinstance(c, tuple):
+                c = list(c)
+
+            if tool.shell and not isinstance(c, str):
+                self.app.display_error(
+                    "hatch-sphinx: cannot pass a list of args for a custom command "
+                    "in shell=true mode."
+                )
+                aborting = True
+
+            if tool.expand_globs and tool.shell:
+                self.app.display_error(
+                    "hatch-sphinx: expanding globs cannot be done reliably in shell=true mode."
+                )
+                aborting = True
+
+            if aborting:
+                self.app.abort("hatch-sphinx: exiting on misconfiguration.")
+
+            # Where we can, work with a list not a str
+            if not tool.shell and not isinstance(c, list):
+                c = shlex.split(c)
+                self.app.display_debug(
+                    "hatch-sphinx: splitting the command with shlex.split; avoid "
+                    "this by specifying the command as a list in the configuration. "
+                    f"Command: {c}"
+                )
+
+            # c is either a list: [command, option1, option2, ...]
+            #   or a str: "command option1 option2"
+            # process it for:
+            #   - tokens in the command like {python}, always
+            #   - glob expansion, if configured
+
+            c = self._replace_tokens(c)
+
+            if tool.expand_globs:
+                assert isinstance(c, list)  # config options above enforce this
+                c = self._expand_globs(c, doc_path)
 
             self.app.display_info(f"hatch-sphinx: executing '{c}'")
+
             try:
                 subprocess.run(
-                    c, check=True, cwd=doc_path, shell=shell, env=self._env(tool)
+                    c, check=True, cwd=doc_path, shell=tool.shell, env=self._env(tool)
                 )
             except (OSError, subprocess.CalledProcessError) as e:
                 self.app.display_error(f"hatch-sphinx: command failed: {e}")
@@ -209,6 +288,36 @@ class SphinxBuildHook(BuildHookInterface[BuilderConfig]):
         if tool.environment:
             env.update(tool.environment)
         return env
+
+    def _expand_globs(self, args: list[str], root_dir: str | Path) -> list[str]:
+        """expand globs in the command"""
+        expanded = []
+        for a in args:
+            if "*" in a or "?" in a or "[" in a:
+                # CRUFT: root_dir arg added to glob in Python 3.10
+                # globs = glob.glob(a, root_dir=root_dir)
+                with chdir(root_dir):
+                    globs = glob.glob(a)
+                if not globs:
+                    self.app.display_warning(
+                        f"hatch-sphinx: glob '{a}' evaluated to empty string: "
+                        "this is probably not what you want."
+                    )
+                expanded.extend(globs)
+            else:
+                expanded.append(a)
+        return expanded
+
+    def _replace_tokens(self, args: str | list[str]) -> str | list[str]:
+        """replace defined tokens in the command"""
+        if isinstance(args, str):
+            return self._replace_tokens_str(args)
+
+        return [self._replace_tokens_str(a) for a in args]
+
+    def _replace_tokens_str(self, arg: str) -> str:
+        """replace defined tokens in the command"""
+        return arg.replace("{python}", sys.executable)
 
 
 def load_tools(config: dict[str, Any]) -> Sequence[ToolConfig]:
@@ -283,10 +392,15 @@ class ToolConfig(BuilderConfig):
     # Config items for the 'commands' tool
 
     commands: list[str | list[str]] = field(default_factory=list)
-    """Custom command to run within the {doc_dir}"""
+    """Custom command to run within the {doc_dir}; if provided as a str then
+    it is split with shlex.split prior to use"""
 
-    shell: Optional[bool] = None
+    shell: bool = False
     """Let the shell expand the command"""
+
+    expand_globs: bool = False
+    """Expand globs in the command prior to running, particularly useful for
+    avoiding shell=true on non-un*x systems"""
 
     def auto_doc_path(self, root: Path) -> Path:
         """Determine the doc root for sphinx"""
