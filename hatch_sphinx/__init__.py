@@ -1,3 +1,3 @@
 """hatch-sphinx: hatchling build plugin for Sphinx document builder"""
 
-__version__ = "0.0.2"
+__version__ = "0.0.3"
