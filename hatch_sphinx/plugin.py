@@ -295,6 +295,8 @@ class SphinxBuildHook(BuildHookInterface[BuilderConfig]):
                             "hatch-sphinx: overwriting environment from configuration: "
                             f"{k}: {v}"
                         )
+                else:
+                    env[k] = v
         return env
 
     def _expand_globs(self, args: list[str], root_dir: str | Path) -> list[str]:
