@@ -98,6 +98,7 @@ class FixtureProject:
                 sys.executable,
                 "-m",
                 "build",
+                "--no-isolation",
                 "--wheel",
                 "--config-setting",
                 "display_debug=true",
