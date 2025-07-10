@@ -1,5 +1,8 @@
 [build-system]
-requires = ["hatchling"]
+requires = [
+  "hatchling",
+  "hatch-vcs",
+]
 build-backend = "hatchling.build"
 
 [project]
@@ -36,7 +39,10 @@ Issues = "https://github.com/llimeht/hatch-sphinx/issues"
 Source = "https://github.com/llimeht/hatch-sphinx"
 
 [tool.hatch.version]
-path = "hatch_sphinx/__init__.py"
+source = "vcs"
+
+[tool.hatch.build.hooks.vcs]
+version-file = "hatch_sphinx/_version.py"
 
 [project.entry-points.hatch]
 sphinx = "hatch_sphinx.hooks"

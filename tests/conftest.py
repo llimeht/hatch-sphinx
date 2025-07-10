@@ -99,6 +99,7 @@ class FixtureProject:
                 "-m",
                 "build",
                 "--no-isolation",
+                "--skip-dependency-check",
                 "--wheel",
                 "--config-setting",
                 "display_debug=true",

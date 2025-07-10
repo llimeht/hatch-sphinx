@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from pathlib import Path
 import subprocess
+import sys
 
 import pytest
 
@@ -102,7 +103,7 @@ out_dir = "output/api"
         assert (extract_dir / "my-test-app" / "docs" / "api" / "modules.rst").exists()
 
 
-def test_tool_custom(new_project: FixtureProject, tmp_path: Path) -> None:
+def test_tool_custom_strings(new_project: FixtureProject, tmp_path: Path) -> None:
     """test 'custom' commands tool"""
 
     new_project.add_tool_config(
@@ -117,29 +118,6 @@ commands = [
     "touch output/a1.html output/a2.html",
     "rm output/a*.html",
 ]
-
-[[tool.hatch.build.targets.wheel.hooks.sphinx.tools]]
-tool = "custom"
-out_dir = "output2"
-shell = false
-expand_globs = true
-commands = [
-    "touch output2/foo.html output2/bar.html",
-    "rm output2/f*.html",
-    ["touch", "output2/3 4.html", "output2/c1.html", "output/c2.html"],
-    ["rm", "output2/c*.html"],
-]
-
-[[tool.hatch.build.targets.wheel.hooks.sphinx.tools]]
-tool = "custom"
-out_dir = "output3"
-shell = false
-expand_globs = false
-commands = [
-    ["touch", "output3/1*.html"],
-    ["touch", "output3/2*.html"],
-    ["touch", "output3/a b.html"],
-]
 """
     )
 
@@ -153,16 +131,6 @@ commands = [
     # Check handling of multi-arg commands with spaces (shell=True)
     assert not (new_project.path / "docs" / "output" / "a1.html").exists()
 
-    # And for shell=False but expand_globs=True where plugin does globbing
-    assert not (new_project.path / "docs" / "output2" / "foo.html").exists()
-    assert (new_project.path / "docs" / "output2" / "bar.html").exists()
-    assert (new_project.path / "docs" / "output2" / "3 4.html").exists()
-    assert not (new_project.path / "docs" / "output2" / "c1.html").exists()
-
-    # And for shell=False where wildcards will not be expanded
-    assert (new_project.path / "docs" / "output3" / "1*.html").exists()
-    assert (new_project.path / "docs" / "output3" / "a b.html").exists()
-
     extract_dir = tmp_path / "extract"
     extract_dir.mkdir()
 
@@ -170,6 +138,81 @@ commands = [
         whl.extractall(extract_dir)
         # Check that the file made it into the wheel
         assert (extract_dir / "my-test-app" / "docs" / "foo.html").exists()
+
+
+def test_tool_custom_lists_globs(new_project: FixtureProject, tmp_path: Path) -> None:
+    """test 'custom' commands tool"""
+
+    new_project.add_tool_config(
+        """\
+[[tool.hatch.build.targets.wheel.hooks.sphinx.tools]]
+tool = "custom"
+out_dir = "output"
+shell = false
+expand_globs = true
+commands = [
+    "touch output/foo.html output/bar.html",
+    "rm output/f*.html",
+    ["touch", "output/3 4.html", "output/c1.html", "output/c2.html"],
+    ["rm", "output/c*.html"],
+]
+"""
+    )
+
+    (new_project.path / "docs").mkdir(exist_ok=True)
+
+    new_project.build()
+
+    # Check for shell=False but expand_globs=True where plugin does globbing
+    assert not (new_project.path / "docs" / "output" / "foo.html").exists()
+    assert (new_project.path / "docs" / "output" / "bar.html").exists()
+    assert (new_project.path / "docs" / "output" / "3 4.html").exists()
+    assert not (new_project.path / "docs" / "output" / "c1.html").exists()
+
+    extract_dir = tmp_path / "extract"
+    extract_dir.mkdir()
+
+    with new_project.wheel() as whl:
+        whl.extractall(extract_dir)
+        # Check that the file made it into the wheel
+        assert (extract_dir / "my-test-app" / "docs" / "bar.html").exists()
+
+
+@pytest.mark.skipif(sys.platform.startswith("win"), reason="Windows does not support filenames with glob characters")
+def test_tool_custom_lists_noglobs(new_project: FixtureProject, tmp_path: Path) -> None:
+    """test 'custom' commands tool"""
+
+    new_project.add_tool_config(
+        """\
+[[tool.hatch.build.targets.wheel.hooks.sphinx.tools]]
+tool = "custom"
+out_dir = "output"
+shell = false
+expand_globs = false
+commands = [
+    ["touch", "output/1*.html"],
+    ["touch", "output/2*.html"],
+    ["touch", "output/a b.html"],
+]
+"""
+    )
+
+    (new_project.path / "docs").mkdir(exist_ok=True)
+
+    new_project.build()
+
+    # test for shell=False where wildcards will not be expanded
+    assert (new_project.path / "docs" / "output" / "1*.html").exists()
+    assert (new_project.path / "docs" / "output" / "a b.html").exists()
+
+    extract_dir = tmp_path / "extract"
+    extract_dir.mkdir()
+
+    with new_project.wheel() as whl:
+        whl.extractall(extract_dir)
+        # Check that the file made it into the wheel
+        assert (extract_dir / "my-test-app" / "docs" / "1*.html").exists()
+        assert (extract_dir / "my-test-app" / "docs" / "a b.html").exists()
 
 
 def test_tool_custom_config_error(new_project: FixtureProject) -> None:

@@ -2,6 +2,10 @@ name: Test
 
 on: [push, pull_request]
 
+defaults:
+  run:
+    shell: bash
+
 jobs:
   test:
 
@@ -13,6 +17,8 @@ jobs:
 
     steps:
     - uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
 
     - name: Set up Python ${{ matrix.python-version }}
       uses: actions/setup-python@v5
@@ -26,8 +32,36 @@ jobs:
 
     - name: Build and install package
       run: |
-        python -m pip install .
+        python -m build --wheel
+        find dist -type f
+        python -m pip install dist/*.whl
 
     - name: Test with pytest
       run: |
         pytest -v
+
+    - name: Integration test
+      run: |
+        # build sasdata to make sure it builds the package
+
+        # location of the wheel for hatch-sphinx
+        DIST=$PWD/dist
+
+        # clean directory for this test
+        mkdir buildtest
+        cd buildtest
+
+        # obtain the sdist for sasdata; if only this could be done reliably with pip
+        pip install unearth
+        unearth --no-binary --download=. sasdata
+
+        # build sasdata with the newly created hatch-sphinx wheel
+        cd sasdata*
+        pip wheel -v --find-links=$DIST --pre --no-binary sasdata .
+
+        # Rudimentary inspection of the wheel
+        zipinfo sasdata*whl
+        if [ $(zipinfo sasdata*whl | grep -c sasdata/docs/) -lt 100 ]; then
+          echo "Didn't find sphinx output in wheel"
+          exit 1
+        fi
