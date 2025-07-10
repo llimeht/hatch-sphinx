@@ -114,7 +114,7 @@ shell = true
 expand_globs = false
 commands = [
     "touch output/foo.html",
-    "touch output/1\\\\ 2.html output/a1.html output/a2.html",
+    "touch output/a1.html output/a2.html",
     "rm output/a*.html",
 ]
 
@@ -151,7 +151,6 @@ commands = [
     assert (new_project.path / "docs" / "output" / "foo.html").exists()
 
     # Check handling of multi-arg commands with spaces (shell=True)
-    assert (new_project.path / "docs" / "output" / "1 2.html").exists()
     assert not (new_project.path / "docs" / "output" / "a1.html").exists()
 
     # And for shell=False but expand_globs=True where plugin does globbing

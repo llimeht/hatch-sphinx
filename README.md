@@ -77,10 +77,17 @@ configuration keys they support are listed below
 | `shell` | `false` | Whether to run the command via the shell (i.e. the `shell` parameter for `subprocess.run`) which permits wildcard expansion and scripting; note that the command cannot be a list of strings in `shell=true` mode. The standard warnings from `subprocess.run` to avoid using the shell apply here too. |
 | `expand_globs` | `false` | Whether to expand globs in the command arguments. |
 
-Note that not all combinations of `shell=true`, `expand_globs=true` and the
-individual command being a single string are supported. The recommended
-configuration is to use `shell=false` and each command as a list, with
-`expand_globs=true` if wildcard expansion is needed.
+Notes:
+
+ - Not all combinations of `shell=true`, `expand_globs=true` and the
+  individual command being a single string are supported. The recommended
+  configuration is to use `shell=false` and each command as a list, with
+  `expand_globs=true` if wildcard expansion is needed.
+ - Quoting within a single string is almost impossible to do in a portable
+  fashion. If you need to work with filenames with spaces, for instance,
+  then avoid trying to stack backslashes in this in an effort to get
+  this to work.
+
 
 ### Examples
 
