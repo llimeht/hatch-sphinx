@@ -289,7 +289,7 @@ class SphinxBuildHook(BuildHookInterface[BuilderConfig]):
             for k, v in tool.environment.items():
                 if k in env:
                     if k == "PYTHONPATH":
-                        env[k] = f"{v}:{env[k]}"
+                        env[k] = f"{v}{os.pathsep}{env[k]}"
                     else:
                         self.app.display_warning(
                             "hatch-sphinx: overwriting environment from configuration: "
