@@ -1,3 +1,6 @@
 """hatch-sphinx: hatchling build plugin for Sphinx document builder"""
 
-__version__ = "0.0.3"
+try:
+    from ._version import __version__
+except ImportError:
+    __version__ = "0.0.0.dev"
