@@ -46,3 +46,9 @@ version-file = "hatch_sphinx/_version.py"
 
 [project.entry-points.hatch]
 sphinx = "hatch_sphinx.hooks"
+
+[tool.hatch.build.targets.wheel]
+include = [
+  "hatch_sphinx/*.py",
+  "hatch_sphinx/py.typed",
+]
