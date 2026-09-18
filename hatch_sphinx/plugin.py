@@ -17,6 +17,7 @@ from typing import Any, Optional
 
 from hatchling.builders.hooks.plugin.interface import BuildHookInterface
 from hatchling.builders.config import BuilderConfig
+from hatchling.plugin.manager import PluginManager
 
 
 try:
@@ -47,7 +48,7 @@ if os.getenv("HATCH_SPHINX_LOG_LEVEL", None):
     logging.basicConfig(level=log_level)
 
 
-class SphinxBuildHook(BuildHookInterface[BuilderConfig]):
+class SphinxBuildHook(BuildHookInterface[ToolConfig, PluginManager]):
     """Build hook to run Sphinx tools during the build"""
 
     PLUGIN_NAME = "sphinx"
@@ -341,7 +342,7 @@ def load_tools(config: dict[str, Any]) -> Sequence[ToolConfig]:
 
 
 @dataclass
-class ToolConfig(BuilderConfig):
+class ToolConfig(BuilderConfig[PluginManager]):
     """A configuration for a sphinx tool."""
 
     # pylint: disable=too-many-instance-attributes
