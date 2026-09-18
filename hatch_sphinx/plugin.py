@@ -48,6 +48,90 @@ if os.getenv("HATCH_SPHINX_LOG_LEVEL", None):
     logging.basicConfig(level=log_level)
 
 
+@dataclass
+class ToolConfig(BuilderConfig[PluginManager]):
+
+    """A configuration for a sphinx tool."""
+
+    # pylint: disable=too-many-instance-attributes
+
+    tool: str
+    """The sphinx tool to be used: apidoc, build, custom"""
+
+    doc_dir: Optional[str] = None
+    """Path where sphinx sources are to be found. defaults to doc, docs, .;
+    relative to root of build"""
+
+    out_dir: str = "output"
+    """Path where sphinx build output will be saved. Relative to {doc_dir} """
+
+    sphinx_opts: str = ""
+    """Additional options for the tool; will be split using shlex"""
+
+    environment: dict[str, str] = field(default_factory=dict)
+    """Extra environment variables for tool execution"""
+
+    # Config items for the 'build' tool
+
+    tool_build: Optional[list[str]] = None
+    """Command to use (defaults to `python -m sphinx build`)"""
+
+    format: str = "html"
+    """Output format selected for 'build' tool"""
+
+    warnings: bool = False
+    """-W: Turn warnings into errors"""
+
+    keep_going: bool = False
+    """--keep-going: With -W option, keep going after warnings"""
+
+    # Config items for the 'apidoc' tool
+
+    tool_apidoc: Optional[list[str]] = None
+    """Command to use (defaults to `python -m sphinx apidoc`)"""
+
+    depth: int = 3
+    """Depth to recurse into the structures for API docs"""
+
+    private: bool = False
+    """Include private members in API docs"""
+
+    separate: bool = True
+    """Split each module into a separate page"""
+
+    header: Optional[str] = None
+    """Header to use on the API docs"""
+
+    source: str = "."
+    """Source to be included in the API docs"""
+
+    exclude: list[str] = field(default_factory=list)
+    """Patterns of filepaths to exclude from analysis"""
+
+    # Config items for the 'commands' tool
+
+    commands: list[str | list[str]] = field(default_factory=list)
+    """Custom command to run within the {doc_dir}; if provided as a str then
+    it is split with shlex.split prior to use"""
+
+    shell: bool = False
+    """Let the shell expand the command"""
+
+    expand_globs: bool = False
+    """Expand globs in the command prior to running, particularly useful for
+    avoiding shell=true on non-un*x systems"""
+
+    def auto_doc_path(self, root: Path) -> Path:
+        """Determine the doc root for sphinx"""
+        if self.doc_dir:
+            return root / self.doc_dir
+        for d in ["doc", "docs"]:
+            p = root / d
+            if p.exists() and p.is_dir():
+                return p
+        return root
+
+
 class SphinxBuildHook(BuildHookInterface[ToolConfig, PluginManager]):
     """Build hook to run Sphinx tools during the build"""
 
@@ -339,89 +423,6 @@ def load_tools(config: dict[str, Any]) -> Sequence[ToolConfig]:
         ToolConfig(**{**tool_defaults, **tool_config})
         for tool_config in config.get("tools", [])
     ]
-
-
-@dataclass
-class ToolConfig(BuilderConfig[PluginManager]):
-    """A configuration for a sphinx tool."""
-
-    # pylint: disable=too-many-instance-attributes
-
-    tool: str
-    """The sphinx tool to be used: apidoc, build, custom"""
-
-    doc_dir: Optional[str] = None
-    """Path where sphinx sources are to be found. defaults to doc, docs, .;
-    relative to root of build"""
-
-    out_dir: str = "output"
-    """Path where sphinx build output will be saved. Relative to {doc_dir} """
-
-    sphinx_opts: str = ""
-    """Additional options for the tool; will be split using shlex"""
-
-    environment: dict[str, str] = field(default_factory=dict)
-    """Extra environment variables for tool execution"""
-
-    # Config items for the 'build' tool
-
-    tool_build: Optional[list[str]] = None
-    """Command to use (defaults to `python -m sphinx build`)"""
-
-    format: str = "html"
-    """Output format selected for 'build' tool"""
-
-    warnings: bool = False
-    """-W: Turn warnings into errors"""
-
-    keep_going: bool = False
-    """--keep-going: With -W option, keep going after warnings"""
-
-    # Config items for the 'apidoc' tool
-
-    tool_apidoc: Optional[list[str]] = None
-    """Command to use (defaults to `python -m sphinx apidoc`)"""
-
-    depth: int = 3
-    """Depth to recurse into the structures for API docs"""
-
-    private: bool = False
-    """Include private members in API docs"""
-
-    separate: bool = True
-    """Split each module into a separate page"""
-
-    header: Optional[str] = None
-    """Header to use on the API docs"""
-
-    source: str = "."
-    """Source to be included in the API docs"""
-
-    exclude: list[str] = field(default_factory=list)
-    """Patterns of filepaths to exclude from analysis"""
-
-    # Config items for the 'commands' tool
-
-    commands: list[str | list[str]] = field(default_factory=list)
-    """Custom command to run within the {doc_dir}; if provided as a str then
-    it is split with shlex.split prior to use"""
-
-    shell: bool = False
-    """Let the shell expand the command"""
-
-    expand_globs: bool = False
-    """Expand globs in the command prior to running, particularly useful for
-    avoiding shell=true on non-un*x systems"""
-
-    def auto_doc_path(self, root: Path) -> Path:
-        """Determine the doc root for sphinx"""
-        if self.doc_dir:
-            return root / self.doc_dir
-        for d in ["doc", "docs"]:
-            p = root / d
-            if p.exists() and p.is_dir():
-                return p
-        return root
 
 
 def dataclass_defaults(obj: Any) -> dict[str, Any]:
